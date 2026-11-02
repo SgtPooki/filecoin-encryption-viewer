@@ -11,6 +11,7 @@ import { decode as decodeCbor } from '@ipld/dag-cbor'
 import * as fee from 'filecoin-encryption-envelope'
 import { CID } from 'multiformats/cid'
 import { bytesToHex } from 'viem'
+import { openContentSource } from './content-source.js'
 import {
   DamagedLinkError,
   NotAShareError,
@@ -84,7 +85,7 @@ export async function openProtectedArchive(
   cid: string,
   payload: Uint8Array,
   accessKey: Uint8Array,
-  fetchFn: typeof fetch = fetch
+  fetchFn?: typeof fetch
 ): Promise<ProtectedArchive> {
   let opened: { key: Uint8Array; grant: Grant }
   try {
@@ -97,7 +98,8 @@ export async function openProtectedArchive(
   let nodeKey: Uint8Array | undefined = opened.key
   let key: Uint8Array | undefined
   try {
-    const source = await openRangeSource(`https://${cid}.ipfs.dweb.link/`, fetchFn)
+    // An injected fetch (dev harness, tests) serves the envelope by Range; otherwise providers are found by CID
+    const source = fetchFn ? await openRangeSource(fetchFn) : await openContentSource(CID.parse(cid))
     const info = await fee.parse(source)
     if (info.scheme !== 'chunked' || info.contentType !== CAR_CONTENT_TYPE || !info.params.plaintextLength) {
       throw new NotAShareError()

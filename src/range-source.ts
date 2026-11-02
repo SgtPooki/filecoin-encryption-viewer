@@ -14,7 +14,11 @@ const CONTENT_RANGE = /^bytes (\d+)-(\d+)\/(\d+)$/
  * A random-access view of the envelope behind `url`, read with Range requests. `size` comes from the first
  * response's Content-Range, and the head bytes it carried are reused, so the header parse costs no extra request.
  */
-export async function openRangeSource(url: string, fetchFn: typeof fetch): Promise<RandomAccessSource> {
+/** What the injected fetch is asked for; it decides where the envelope lives (dev harness, tests). */
+const ENVELOPE = 'envelope'
+
+export async function openRangeSource(fetchFn: typeof fetch): Promise<RandomAccessSource> {
+  const url = ENVELOPE
   const first = await requestHead(url, fetchFn)
   const body = await readAll(first.body).catch((error) => {
     throw new NotAvailableError('The download was interrupted', { cause: error })
